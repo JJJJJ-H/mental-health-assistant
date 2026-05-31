@@ -1,4 +1,4 @@
-import type { KnowledgeIndex } from "./types";
+import type { KnowledgeIndex } from "./types.js";
 
 export const knowledgeIndex: KnowledgeIndex = {
   "documents": [

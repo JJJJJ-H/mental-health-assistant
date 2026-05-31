@@ -1,6 +1,6 @@
-import { tokenize } from "../../scripts/build-knowledge-index";
-import { knowledgeIndex } from "./index.generated";
-import type { RetrievedSource } from "../types";
+import { tokenize } from "../../scripts/build-knowledge-index.js";
+import { knowledgeIndex } from "./index.generated.js";
+import type { RetrievedSource } from "../types.js";
 
 const MIN_SCORE = 0.02;
 

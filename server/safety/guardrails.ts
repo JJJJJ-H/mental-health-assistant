@@ -1,4 +1,4 @@
-import type { ChatMessage } from "../types";
+import type { ChatMessage } from "../types.js";
 
 const MAX_MESSAGES = 24;
 const MAX_MESSAGE_LENGTH = 4000;

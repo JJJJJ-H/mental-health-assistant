@@ -1,4 +1,4 @@
-import type { ChatMessage, PromptPayload, RetrievedSource } from "../types";
+import type { ChatMessage, PromptPayload, RetrievedSource } from "../types.js";
 
 const BASE_PROMPT = `你是“心理健康小助手”，面向用户提供谨慎、清晰的心理健康科普信息。
 你的回答只能作为教育参考，不能替代专业诊断、心理咨询或医疗治疗。

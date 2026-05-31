@@ -1,4 +1,4 @@
-import type { PromptPayload } from "../types";
+import type { PromptPayload } from "../types.js";
 
 const DEEPSEEK_URL = "https://api.deepseek.com/chat/completions";
 const DEFAULT_TIMEOUT_MS = 30_000;

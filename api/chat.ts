@@ -1,13 +1,13 @@
-import { streamDeepSeek } from "../server/llm/deepseek";
-import { buildPrompt } from "../server/prompt/buildPrompt";
-import { retrieveSources } from "../server/rag/retriever";
+import { streamDeepSeek } from "../server/llm/deepseek.js";
+import { buildPrompt } from "../server/prompt/buildPrompt.js";
+import { retrieveSources } from "../server/rag/retriever.js";
 import {
   detectCrisisRisk,
   limitHistory,
   validateChatRequest
-} from "../server/safety/guardrails";
-import { serializeSse } from "../server/stream/sse";
-import type { ChatMessage, PromptPayload, RetrievedSource } from "../server/types";
+} from "../server/safety/guardrails.js";
+import { serializeSse } from "../server/stream/sse.js";
+import type { ChatMessage, PromptPayload, RetrievedSource } from "../server/types.js";
 
 const CRISIS_WARNING =
   "如果你有伤害自己或他人的想法、计划或行为，请立即联系当地急救服务、前往附近医疗机构急诊，或请可信赖的人陪伴你并协助联系专业机构。";

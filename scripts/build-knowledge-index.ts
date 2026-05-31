@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import type {
   KnowledgeDocument,
   KnowledgeIndex
-} from "../server/rag/types";
+} from "../server/rag/types.js";
 
 const DEFAULT_MAX_LENGTH = 700;
 const DEFAULT_OVERLAP = 100;
@@ -138,7 +138,7 @@ export function buildIndex(documents: KnowledgeDocument[]): KnowledgeIndex {
 }
 
 function generateIndexModule(index: KnowledgeIndex): string {
-  return `import type { KnowledgeIndex } from "./types";
+  return `import type { KnowledgeIndex } from "./types.js";
 
 export const knowledgeIndex: KnowledgeIndex = ${JSON.stringify(index, null, 2)};
 `;
