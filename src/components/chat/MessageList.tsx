@@ -12,6 +12,7 @@ export function MessageList() {
   const listRef = useRef<List>(null);
 
   useEffect(() => {
+    listRef.current?.recomputeRowHeights();
     listRef.current?.scrollToRow(messages.length - 1);
   }, [messages]);
 
@@ -20,6 +21,14 @@ export function MessageList() {
       <MessageRow message={messages[index]!} />
     </div>
   );
+
+  const rowHeight = ({ index }: { index: number }) => {
+    const message = messages[index];
+    if (!message) return 160;
+    const textRows = Math.max(1, Math.ceil(message.content.length / 48));
+    const sourceRows = message.sources?.length ?? 0;
+    return Math.max(160, 108 + textRows * 28 + sourceRows * 132);
+  };
 
   return (
     <div className="message-list" aria-label="对话消息">
@@ -30,7 +39,7 @@ export function MessageList() {
             height={height}
             width={width}
             rowCount={messages.length}
-            rowHeight={220}
+            rowHeight={rowHeight}
             rowRenderer={rowRenderer}
             overscanRowCount={3}
             scrollToAlignment="end"
