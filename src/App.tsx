@@ -1,3 +1,12 @@
+import { ChatProvider } from "./context/ChatContext";
+import { AppShell } from "./components/layout/AppShell";
+import "./styles/global.css";
+import "./styles/app.css";
+
 export default function App() {
-  return <main>心理健康小助手</main>;
+  return (
+    <ChatProvider>
+      <AppShell />
+    </ChatProvider>
+  );
 }

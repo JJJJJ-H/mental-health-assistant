@@ -8,7 +8,7 @@ function createDefaultState(): AppState {
     version: APP_STATE_VERSION,
     conversations: [],
     theme: "system",
-    sidebarCollapsed: false
+    sidebarCollapsed: typeof window !== "undefined" && window.innerWidth <= 760
   };
 }
 
@@ -76,6 +76,7 @@ export function deleteConversation(
   return conversations.filter((conversation) => conversation.id !== conversationId);
 }
 
-export function clearConversations(_conversations: Conversation[]): Conversation[] {
+export function clearConversations(conversations: Conversation[] = []): Conversation[] {
+  void conversations;
   return [];
 }
