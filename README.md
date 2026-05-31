@@ -31,6 +31,17 @@ npm run dev
 
 前端默认运行在 `http://localhost:5173`。
 
+### Windows PowerShell 开发环境
+
+Windows PowerShell 5 下建议先运行：
+
+```powershell
+. .\scripts\Initialize-DevShell.ps1
+.\scripts\Test-DevShell.ps1
+```
+
+初始化脚本会统一 `Path`、UTF-8 代码页和 PowerShell 文件编码，并优先使用用户目录中安装的官方 ripgrep。验证脚本会检查 Git、Node、ripgrep、UTF-8 和 `Start-Process`。
+
 如需联调完整 Serverless API，请安装 Vercel CLI 后执行：
 
 ```bash
@@ -85,7 +96,8 @@ npm run build
 2. 在 Vercel 中导入仓库。
 3. 在 Vercel 项目环境变量中配置 `DEEPSEEK_API_KEY`。
 4. 确保生产环境没有将 `ALLOW_MOCK_LLM` 设置为 `true`。
-5. 触发部署，Vercel 会构建前端并提供 `/api/chat` 和 `/api/health`。
+5. 为公开匿名接口配置 Vercel Firewall Rate Limiting 或外部限流服务，避免 API 额度被滥用。
+6. 触发部署，Vercel 会构建前端并提供 `/api/chat` 和 `/api/health`。
 
 ## 隐私说明
 

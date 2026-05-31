@@ -1,5 +1,12 @@
-import { useEffect, useMemo, useRef } from "react";
-import { AutoSizer, List, type ListRowProps } from "react-virtualized";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  AutoSizer,
+  CellMeasurer,
+  CellMeasurerCache,
+  List,
+  type ListRowProps,
+  type OnScrollParams
+} from "react-virtualized";
 import { useChat } from "../../context/ChatContext";
 import { MessageRow } from "./MessageRow";
 
@@ -10,24 +17,35 @@ export function MessageList() {
     [activeConversation?.messages]
   );
   const listRef = useRef<List>(null);
+  const cacheRef = useRef(
+    new CellMeasurerCache({ defaultHeight: 180, fixedWidth: true })
+  );
+  const [isNearBottom, setIsNearBottom] = useState(true);
 
   useEffect(() => {
+    cacheRef.current.clearAll();
     listRef.current?.recomputeRowHeights();
-    listRef.current?.scrollToRow(messages.length - 1);
-  }, [messages]);
+    if (isNearBottom) listRef.current?.scrollToRow(messages.length - 1);
+  }, [isNearBottom, messages]);
 
-  const rowRenderer = ({ index, key, style }: ListRowProps) => (
-    <div key={key} style={style}>
-      <MessageRow message={messages[index]!} />
-    </div>
+  const rowRenderer = ({ index, key, parent, style }: ListRowProps) => (
+    <CellMeasurer
+      cache={cacheRef.current}
+      columnIndex={0}
+      key={key}
+      parent={parent}
+      rowIndex={index}
+    >
+      {({ measure, registerChild }) => (
+        <div ref={registerChild} style={style}>
+          <MessageRow message={messages[index]!} onSizeChange={measure} />
+        </div>
+      )}
+    </CellMeasurer>
   );
 
-  const rowHeight = ({ index }: { index: number }) => {
-    const message = messages[index];
-    if (!message) return 160;
-    const textRows = Math.max(1, Math.ceil(message.content.length / 48));
-    const sourceRows = message.sources?.length ?? 0;
-    return Math.max(160, 108 + textRows * 28 + sourceRows * 132);
+  const handleScroll = ({ clientHeight, scrollHeight, scrollTop }: OnScrollParams) => {
+    setIsNearBottom(scrollHeight - scrollTop - clientHeight < 96);
   };
 
   return (
@@ -39,8 +57,10 @@ export function MessageList() {
             height={height}
             width={width}
             rowCount={messages.length}
-            rowHeight={rowHeight}
+            deferredMeasurementCache={cacheRef.current}
+            rowHeight={cacheRef.current.rowHeight}
             rowRenderer={rowRenderer}
+            onScroll={handleScroll}
             overscanRowCount={3}
             scrollToAlignment="end"
           />

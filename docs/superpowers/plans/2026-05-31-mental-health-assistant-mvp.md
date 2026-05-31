@@ -498,13 +498,19 @@ git commit -m "docs: add setup and deployment guide"
 
 ## Final Release Checklist
 
-- [ ] Run `npm test`.
-- [ ] Run `npm run typecheck`.
-- [ ] Run `npm run build`.
-- [ ] Verify local mock-mode API stream.
-- [ ] Verify browser flow end to end.
-- [ ] Confirm `DEEPSEEK_API_KEY` is not committed.
-- [ ] Confirm production cannot silently use mock mode.
-- [ ] Confirm the implementation is independent from the old `yuan-Chat` source tree.
+- [x] Run `npm test`.
+- [x] Run `npm run typecheck`.
+- [x] Run `npm run build`.
+- [x] Verify local mock-mode API stream at the handler boundary.
+- [x] Verify browser flow end to end with injected mock SSE.
+- [x] Confirm `DEEPSEEK_API_KEY` is not committed.
+- [x] Confirm production cannot silently use mock mode.
+- [x] Confirm the implementation is independent from the old `yuan-Chat` source tree.
 - [ ] Create a new GitHub repository only after the local release checklist passes.
 
+Remaining deployment verification:
+
+- [x] Authenticate Vercel CLI and run `npx vercel dev`.
+- [x] Verify `/api/health` and `/api/chat` through the Vercel local runtime.
+- [x] Configure a real `DEEPSEEK_API_KEY` and verify a streamed DeepSeek response.
+- [ ] Connect the Vercel project to a Git repository, then add Preview environment variables.

@@ -1,4 +1,4 @@
-import type { AppState, Conversation, Theme } from "../types/chat";
+import type { AppState, ChatMessage, Conversation, Theme } from "../types/chat";
 
 export const APP_STATE_VERSION = 1;
 export const STORAGE_KEY = "mental-health-assistant:state";
@@ -16,6 +16,30 @@ function isTheme(value: unknown): value is Theme {
   return value === "light" || value === "dark" || value === "system";
 }
 
+function isMessage(value: unknown): value is ChatMessage {
+  if (!value || typeof value !== "object") return false;
+  const message = value as Partial<ChatMessage>;
+  return (
+    typeof message.id === "string" &&
+    (message.role === "user" || message.role === "assistant") &&
+    typeof message.content === "string" &&
+    typeof message.createdAt === "string"
+  );
+}
+
+function isConversation(value: unknown): value is Conversation {
+  if (!value || typeof value !== "object") return false;
+  const conversation = value as Partial<Conversation>;
+  return (
+    typeof conversation.id === "string" &&
+    typeof conversation.title === "string" &&
+    typeof conversation.createdAt === "string" &&
+    typeof conversation.updatedAt === "string" &&
+    Array.isArray(conversation.messages) &&
+    conversation.messages.every(isMessage)
+  );
+}
+
 function isAppState(value: unknown): value is AppState {
   if (!value || typeof value !== "object") {
     return false;
@@ -25,6 +49,7 @@ function isAppState(value: unknown): value is AppState {
   return (
     candidate.version === APP_STATE_VERSION &&
     Array.isArray(candidate.conversations) &&
+    candidate.conversations.every(isConversation) &&
     isTheme(candidate.theme) &&
     typeof candidate.sidebarCollapsed === "boolean"
   );

@@ -6,7 +6,13 @@ const CitationPanel = lazy(() =>
   import("./CitationPanel").then((module) => ({ default: module.CitationPanel }))
 );
 
-export function MessageRow({ message }: { message: ChatMessage }) {
+export function MessageRow({
+  message,
+  onSizeChange
+}: {
+  message: ChatMessage;
+  onSizeChange?: () => void;
+}) {
   const [highlightedCitation, setHighlightedCitation] = useState<number>();
 
   return (
@@ -25,6 +31,7 @@ export function MessageRow({ message }: { message: ChatMessage }) {
             <CitationPanel
               sources={message.sources}
               highlightedCitation={highlightedCitation}
+              onSizeChange={onSizeChange}
             />
           </Suspense>
         )}

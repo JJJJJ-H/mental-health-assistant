@@ -23,6 +23,8 @@ export function Composer() {
     <div className="composer-wrap">
       <div className="composer">
         <textarea
+          id="message"
+          name="message"
           value={input}
           onChange={(event) => setInput(event.target.value)}
           onKeyDown={handleKeyDown}

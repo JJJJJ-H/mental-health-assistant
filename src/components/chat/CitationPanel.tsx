@@ -1,14 +1,24 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { CitationSource } from "../../types/chat";
 
 export function CitationPanel({
   sources,
-  highlightedCitation
+  highlightedCitation,
+  onSizeChange
 }: {
   sources: CitationSource[];
   highlightedCitation?: number;
+  onSizeChange?: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    if (highlightedCitation !== undefined) setExpanded(true);
+  }, [highlightedCitation]);
+
+  useEffect(() => {
+    onSizeChange?.();
+  }, [expanded, onSizeChange]);
 
   return (
     <section className="citation-panel">
@@ -27,7 +37,9 @@ export function CitationPanel({
               <strong>
                 [{source.index}] {source.title}
               </strong>
-              <span>{source.source}</span>
+              <span>
+                {source.source} · 相关度 {Math.round(source.score * 100)}%
+              </span>
               <p>{source.excerpt}</p>
             </article>
           ))}

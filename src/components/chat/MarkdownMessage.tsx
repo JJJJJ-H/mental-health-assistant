@@ -1,3 +1,4 @@
+import { Children, cloneElement, isValidElement, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
@@ -20,6 +21,20 @@ function splitCitations(text: string, onCitationClick: (index: number) => void) 
   });
 }
 
+function renderCitations(children: ReactNode, onCitationClick: (index: number) => void): ReactNode {
+  return Children.map(children, (child) => {
+    if (typeof child === "string") {
+      return splitCitations(child, onCitationClick);
+    }
+    if (!isValidElement<{ children?: ReactNode }>(child) || child.props.children === undefined) {
+      return child;
+    }
+    return cloneElement(child, {
+      children: renderCitations(child.props.children, onCitationClick)
+    });
+  });
+}
+
 export function MarkdownMessage({
   content,
   onCitationClick
@@ -32,9 +47,8 @@ export function MarkdownMessage({
       remarkPlugins={[remarkGfm]}
       rehypePlugins={[rehypeHighlight]}
       components={{
-        p: ({ children }) => (
-          <p>{typeof children === "string" ? splitCitations(children, onCitationClick) : children}</p>
-        )
+        p: ({ children }) => <p>{renderCitations(children, onCitationClick)}</p>,
+        li: ({ children }) => <li>{renderCitations(children, onCitationClick)}</li>
       }}
     >
       {content}

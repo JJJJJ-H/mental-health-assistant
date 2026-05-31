@@ -15,6 +15,9 @@ const CRISIS_WARNING =
 interface RequestLike {
   method?: string;
   body?: unknown;
+  signal?: AbortSignal;
+  on?: (event: "aborted" | "error", listener: () => void) => void;
+  off?: (event: "aborted" | "error", listener: () => void) => void;
 }
 
 interface ResponseLike {
@@ -34,7 +37,10 @@ interface ChatDependencies {
     sources: RetrievedSource[],
     crisisRisk: boolean
   ) => PromptPayload;
-  streamLlm: (prompt: PromptPayload) => AsyncIterable<string>;
+  streamLlm: (
+    prompt: PromptPayload,
+    signal?: AbortSignal
+  ) => AsyncIterable<string>;
 }
 
 const defaultDependencies: ChatDependencies = {
@@ -43,7 +49,7 @@ const defaultDependencies: ChatDependencies = {
   retrieve: retrieveSources,
   detectCrisis: detectCrisisRisk,
   build: buildPrompt,
-  streamLlm: streamDeepSeek
+  streamLlm: (prompt, signal) => streamDeepSeek(prompt, { signal })
 };
 
 function setStatus(response: ResponseLike, status: number): void {
@@ -56,6 +62,53 @@ function startSse(response: ResponseLike): void {
   response.setHeader("Connection", "keep-alive");
 }
 
+function sendJsonError(
+  response: ResponseLike,
+  status: number,
+  error: string
+): void {
+  setStatus(response, status);
+  response.setHeader("Content-Type", "application/json; charset=utf-8");
+  response.end(JSON.stringify({ error }));
+}
+
+function truncateRawMessages(body: unknown, limit = 24): unknown {
+  if (!body || typeof body !== "object" || !("messages" in body)) {
+    return body;
+  }
+
+  const messages = (body as { messages?: unknown }).messages;
+  if (!Array.isArray(messages)) {
+    return body;
+  }
+
+  return { ...body, messages: messages.slice(-limit) };
+}
+
+function getRequestSignal(request: RequestLike): {
+  signal?: AbortSignal;
+  dispose: () => void;
+} {
+  if (request.signal) {
+    return { signal: request.signal, dispose: () => undefined };
+  }
+  if (!request.on) {
+    return { dispose: () => undefined };
+  }
+
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  request.on("aborted", abort);
+  request.on("error", abort);
+  return {
+    signal: controller.signal,
+    dispose: () => {
+      request.off?.("aborted", abort);
+      request.off?.("error", abort);
+    }
+  };
+}
+
 export function createChatHandler(
   overrides: Partial<ChatDependencies> = {}
 ): (request: RequestLike, response: ResponseLike) => Promise<void> {
@@ -63,22 +116,30 @@ export function createChatHandler(
 
   return async (request, response) => {
     if (request.method !== "POST") {
-      setStatus(response, 405);
       response.setHeader("Allow", "POST");
-      response.end(JSON.stringify({ error: "Method not allowed" }));
+      sendJsonError(response, 405, "Method not allowed");
       return;
     }
 
+    let messages: ChatMessage[];
+    try {
+      messages = dependencies.validate(truncateRawMessages(request.body));
+    } catch {
+      sendJsonError(response, 400, "Invalid request");
+      return;
+    }
+
+    const latestUserMessage = [...messages]
+      .reverse()
+      .find((message) => message.role === "user");
+    if (!latestUserMessage) {
+      sendJsonError(response, 400, "Invalid request");
+      return;
+    }
+
+    const { signal, dispose } = getRequestSignal(request);
     startSse(response);
     try {
-      const messages = dependencies.validate(request.body);
-      const latestUserMessage = [...messages]
-        .reverse()
-        .find((message) => message.role === "user");
-      if (!latestUserMessage) {
-        throw new Error("At least one user message is required");
-      }
-
       const limitedMessages = dependencies.limit(messages, 12);
       const sources = dependencies.retrieve(latestUserMessage.content);
       const crisisRisk = dependencies.detectCrisis(latestUserMessage.content);
@@ -88,14 +149,16 @@ export function createChatHandler(
       if (crisisRisk) {
         response.write(serializeSse("warning", { message: CRISIS_WARNING }));
       }
-      for await (const content of dependencies.streamLlm(prompt)) {
+      for await (const content of dependencies.streamLlm(prompt, signal)) {
         response.write(serializeSse("delta", { content }));
       }
       response.write(serializeSse("done", {}));
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unexpected error";
-      response.write(serializeSse("error", { message }));
+    } catch {
+      response.write(
+        serializeSse("error", { message: "Unable to complete the request" })
+      );
     } finally {
+      dispose();
       response.end();
     }
   };

@@ -71,6 +71,42 @@ describe("ChatProvider", () => {
     });
   });
 
+  it("batches streamed deltas before updating the assistant answer", async () => {
+    vi.useFakeTimers();
+    let releaseStream!: () => void;
+    streamChatMock.mockImplementation(
+      async (
+        _messages: unknown,
+        _signal: AbortSignal,
+        onEvent: (event: ChatStreamEvent) => void
+      ) => {
+        onEvent({ event: "delta", data: { content: "第一段" } });
+        onEvent({ event: "delta", data: { content: "第二段" } });
+        await new Promise<void>((resolve) => {
+          releaseStream = resolve;
+        });
+        onEvent({ event: "done", data: {} });
+      }
+    );
+    const { result } = renderHook(() => useChat(), { wrapper });
+
+    let pending!: Promise<void>;
+    act(() => {
+      pending = result.current.sendMessage("测试流式缓冲");
+    });
+    await act(async () => Promise.resolve());
+    expect(result.current.activeConversation?.messages[1]?.content).toBe("");
+
+    act(() => vi.advanceTimersByTime(40));
+    expect(result.current.activeConversation?.messages[1]?.content).toBe("第一段第二段");
+
+    await act(async () => {
+      releaseStream();
+      await pending;
+    });
+    vi.useRealTimers();
+  });
+
   it("preserves a partial answer when generation is stopped", async () => {
     streamChatMock.mockImplementation(
       async (
@@ -97,6 +133,28 @@ describe("ChatProvider", () => {
     expect(result.current.activeConversation?.messages[1]).toMatchObject({
       content: "部分回答",
       status: "stopped"
+    });
+  });
+
+  it("marks an answer as failed when the stream closes without a terminal event", async () => {
+    streamChatMock.mockImplementation(
+      async (
+        _messages: unknown,
+        _signal: AbortSignal,
+        onEvent: (event: ChatStreamEvent) => void
+      ) => {
+        onEvent({ event: "delta", data: { content: "未完成回答" } });
+      }
+    );
+    const { result } = renderHook(() => useChat(), { wrapper });
+
+    await act(async () => {
+      await result.current.sendMessage("测试断流");
+    });
+
+    expect(result.current.activeConversation?.messages[1]).toMatchObject({
+      content: "未完成回答",
+      status: "error"
     });
   });
 

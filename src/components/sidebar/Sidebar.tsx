@@ -31,6 +31,8 @@ export function Sidebar() {
         + 新建对话
       </button>
       <input
+        id="conversation-search"
+        name="conversation-search"
         className="search-input"
         value={searchQuery}
         onChange={(event) => setSearchQuery(event.target.value)}
@@ -66,7 +68,12 @@ export function Sidebar() {
       <div className="sidebar-footer">
         <label>
           主题
-          <select value={theme} onChange={(event) => setTheme(event.target.value as typeof theme)}>
+          <select
+            id="theme"
+            name="theme"
+            value={theme}
+            onChange={(event) => setTheme(event.target.value as typeof theme)}
+          >
             <option value="system">跟随系统</option>
             <option value="light">浅色</option>
             <option value="dark">深色</option>

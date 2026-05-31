@@ -46,6 +46,7 @@ interface ChatContextValue {
 }
 
 const ChatContext = createContext<ChatContextValue | undefined>(undefined);
+const STREAM_RENDER_INTERVAL_MS = 32;
 
 function newId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -187,7 +188,7 @@ export function ChatProvider({ children }: PropsWithChildren) {
       const existingMessages =
         conversations.find((conversation) => conversation.id === conversationId)
           ?.messages ?? [];
-      const requestMessages = [...existingMessages, userMessage].map(
+      const requestMessages = [...existingMessages, userMessage].slice(-24).map(
         ({ role, content: messageContent }) => ({ role, content: messageContent })
       );
 
@@ -204,6 +205,28 @@ export function ChatProvider({ children }: PropsWithChildren) {
       const controller = new AbortController();
       abortRef.current = controller;
       let sources: CitationSource[] = [];
+      let terminalReceived = false;
+      let bufferedDelta = "";
+      let renderTimer: ReturnType<typeof setTimeout> | undefined;
+
+      const flushBufferedDelta = () => {
+        if (!bufferedDelta) return;
+        const content = bufferedDelta;
+        bufferedDelta = "";
+        updateAssistant(conversationId, assistantMessage.id, (message) => ({
+          ...message,
+          content: `${message.content}${content}`,
+          sources
+        }));
+      };
+
+      const scheduleBufferedDelta = () => {
+        if (renderTimer !== undefined) return;
+        renderTimer = setTimeout(() => {
+          renderTimer = undefined;
+          flushBufferedDelta();
+        }, STREAM_RENDER_INTERVAL_MS);
+      };
 
       try {
         await streamChat(requestMessages, controller.signal, (event) => {
@@ -214,22 +237,23 @@ export function ChatProvider({ children }: PropsWithChildren) {
               sources
             }));
           } else if (event.event === "delta") {
-            updateAssistant(conversationId, assistantMessage.id, (message) => ({
-              ...message,
-              content: `${message.content}${event.data.content}`,
-              sources
-            }));
+            bufferedDelta += event.data.content;
+            scheduleBufferedDelta();
           } else if (event.event === "warning") {
             updateAssistant(conversationId, assistantMessage.id, (message) => ({
               ...message,
               warning: event.data.message
             }));
           } else if (event.event === "done") {
+            terminalReceived = true;
+            flushBufferedDelta();
             updateAssistant(conversationId, assistantMessage.id, (message) => ({
               ...message,
               status: "complete"
             }));
           } else if (event.event === "error") {
+            terminalReceived = true;
+            flushBufferedDelta();
             updateAssistant(conversationId, assistantMessage.id, (message) => ({
               ...message,
               content: message.content || event.data.message,
@@ -246,10 +270,19 @@ export function ChatProvider({ children }: PropsWithChildren) {
           }));
         }
       } finally {
+        if (renderTimer !== undefined) {
+          clearTimeout(renderTimer);
+        }
+        flushBufferedDelta();
         if (controller.signal.aborted) {
           updateAssistant(conversationId, assistantMessage.id, (message) => ({
             ...message,
             status: "stopped"
+          }));
+        } else if (!terminalReceived) {
+          updateAssistant(conversationId, assistantMessage.id, (message) => ({
+            ...message,
+            status: "error"
           }));
         }
         abortRef.current = null;

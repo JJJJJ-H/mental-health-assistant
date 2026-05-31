@@ -59,6 +59,20 @@ describe("storage", () => {
     expect(loadAppState(localStorage).conversations).toEqual([]);
   });
 
+  it("recovers from malformed nested conversation data", () => {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        version: APP_STATE_VERSION,
+        conversations: [{}],
+        theme: "system",
+        sidebarCollapsed: false
+      })
+    );
+
+    expect(loadAppState(localStorage).conversations).toEqual([]);
+  });
+
   it("recovers when the stored schema version is unsupported", () => {
     localStorage.setItem(
       STORAGE_KEY,

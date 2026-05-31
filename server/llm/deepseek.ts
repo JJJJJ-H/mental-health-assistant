@@ -9,24 +9,34 @@ interface DeepSeekOptions {
   env?: Environment;
   fetchImpl?: typeof fetch;
   timeoutMs?: number;
+  signal?: AbortSignal;
 }
 
-function parseDelta(frame: string): string | undefined {
+function parseFrame(frame: string): {
+  done: boolean;
+  delta?: string;
+} {
   const data = frame
     .split("\n")
     .filter((line) => line.startsWith("data:"))
     .map((line) => line.slice(5).trimStart())
     .join("\n");
 
-  if (!data || data === "[DONE]") {
-    return undefined;
+  if (!data) {
+    return { done: false };
+  }
+  if (data === "[DONE]") {
+    return { done: true };
   }
 
   const payload = JSON.parse(data) as {
     choices?: Array<{ delta?: { content?: unknown } }>;
   };
   const content = payload.choices?.[0]?.delta?.content;
-  return typeof content === "string" ? content : undefined;
+  return {
+    done: false,
+    delta: typeof content === "string" ? content : undefined
+  };
 }
 
 async function* readOpenAiStream(response: Response): AsyncGenerator<string> {
@@ -45,7 +55,10 @@ async function* readOpenAiStream(response: Response): AsyncGenerator<string> {
     const frames = buffer.split(/\r?\n\r?\n/);
     buffer = frames.pop() ?? "";
     for (const frame of frames) {
-      const delta = parseDelta(frame);
+      const { done: receivedDone, delta } = parseFrame(frame);
+      if (receivedDone) {
+        return;
+      }
       if (delta) {
         yield delta;
       }
@@ -57,11 +70,16 @@ async function* readOpenAiStream(response: Response): AsyncGenerator<string> {
   }
 
   if (buffer.trim()) {
-    const delta = parseDelta(buffer);
+    const { done: receivedDone, delta } = parseFrame(buffer);
+    if (receivedDone) {
+      return;
+    }
     if (delta) {
       yield delta;
     }
   }
+
+  throw new Error("DeepSeek stream ended before [DONE]");
 }
 
 export async function* streamDeepSeek(
@@ -80,6 +98,12 @@ export async function* streamDeepSeek(
   }
 
   const controller = new AbortController();
+  const abortFromRequest = () => controller.abort(options.signal?.reason);
+  if (options.signal?.aborted) {
+    abortFromRequest();
+  } else {
+    options.signal?.addEventListener("abort", abortFromRequest, { once: true });
+  }
   const timeout = setTimeout(
     () => controller.abort(),
     options.timeoutMs ?? DEFAULT_TIMEOUT_MS
@@ -110,5 +134,6 @@ export async function* streamDeepSeek(
     yield* readOpenAiStream(response);
   } finally {
     clearTimeout(timeout);
+    options.signal?.removeEventListener("abort", abortFromRequest);
   }
 }
