@@ -506,11 +506,13 @@ git commit -m "docs: add setup and deployment guide"
 - [x] Confirm `DEEPSEEK_API_KEY` is not committed.
 - [x] Confirm production cannot silently use mock mode.
 - [x] Confirm the implementation is independent from the old `yuan-Chat` source tree.
-- [ ] Create a new GitHub repository only after the local release checklist passes.
+- [x] Create a new GitHub repository only after the local release checklist passes.
 
 Remaining deployment verification:
 
 - [x] Authenticate Vercel CLI and run `npx vercel dev`.
 - [x] Verify `/api/health` and `/api/chat` through the Vercel local runtime.
 - [x] Configure a real `DEEPSEEK_API_KEY` and verify a streamed DeepSeek response.
-- [ ] Connect the Vercel project to a Git repository, then add Preview environment variables.
+- [x] Connect the Vercel project to a Git repository.
+- [ ] Add Preview environment variables.
+- [ ] Verify the production `/api/chat` SSE flow after the Serverless ESM hotfix.

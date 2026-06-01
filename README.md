@@ -48,6 +48,17 @@ Windows PowerShell 5 下建议先运行：
 npx vercel dev
 ```
 
+### 开发环境排查记录
+
+本项目在 Windows PowerShell 5 和 Vercel 联调过程中遇到过以下环境差异：
+
+- **PowerShell 版本差异**：Windows PowerShell 5 不支持 PowerShell 7 的三元表达式 `condition ? a : b`。开发脚本应使用兼容的 `if` / `else` 写法。
+- **终端编码差异**：如果中文输出显示为乱码，先运行 `. .\scripts\Initialize-DevShell.ps1`。该脚本会切换到 UTF-8 代码页并设置 PowerShell 默认文件编码。
+- **临时文件写入限制**：受限沙箱或安全软件可能阻止 Vite 写入 `node_modules/.vite-temp`，或阻止 TypeScript 写入 `*.tsbuildinfo`。出现 `EPERM: operation not permitted` 时，应在具备项目目录写权限的终端中运行验证命令。
+- **Windows HTTP 客户端差异**：Windows PowerShell 5 的 `Invoke-WebRequest` 在 POST 请求中可能自动发送 `Expect` 请求头，Vercel 本地 Node 代理会报 `expect header not supported`。联调 `/api/chat` 时建议使用浏览器、`curl.exe` 或 Node 原生 `fetch`。
+- **Vercel 首次联调**：首次执行 `npx vercel dev` 需要登录、链接项目，并使用 `--yes` 确认非交互式设置。生成的 `.vercel/` 目录已被 Git 忽略。
+- **Serverless ESM 导入规则**：Vercel 会将函数编译为 Node ESM。服务端相对导入必须显式使用 `.js` 扩展名，例如 `../server/llm/deepseek.js`。本地 `tsx` 和 Vitest 能容忍无扩展名导入，但生产函数会报 `ERR_MODULE_NOT_FOUND`。`tests/serverEsmImports.test.ts` 用于防止该问题回归。
+
 ## 环境变量
 
 ```env
