@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import {
   AutoSizer,
   CellMeasurer,
@@ -9,6 +9,10 @@ import {
 } from "react-virtualized";
 import { useChat } from "../../context/ChatContext";
 import { MessageRow } from "./MessageRow";
+import {
+  findFirstChangedMessageIndex,
+  isNearListBottom
+} from "./messageListScroll";
 
 export function MessageList() {
   const { activeConversation } = useChat();
@@ -20,13 +24,41 @@ export function MessageList() {
   const cacheRef = useRef(
     new CellMeasurerCache({ defaultHeight: 180, fixedWidth: true })
   );
-  const [isNearBottom, setIsNearBottom] = useState(true);
+  const previousMessagesRef = useRef(messages);
+  const previousConversationIdRef = useRef(activeConversation?.id);
+  const shouldFollowOutputRef = useRef(true);
 
   useEffect(() => {
-    cacheRef.current.clearAll();
-    listRef.current?.recomputeRowHeights();
-    if (isNearBottom) listRef.current?.scrollToRow(messages.length - 1);
-  }, [isNearBottom, messages]);
+    const previousMessages = previousMessagesRef.current;
+    const conversationChanged =
+      previousConversationIdRef.current !== activeConversation?.id;
+    const firstChangedIndex = conversationChanged
+      ? 0
+      : findFirstChangedMessageIndex(previousMessages, messages);
+
+    previousMessagesRef.current = messages;
+    previousConversationIdRef.current = activeConversation?.id;
+
+    if (conversationChanged || messages.length > previousMessages.length) {
+      shouldFollowOutputRef.current = true;
+    }
+    if (firstChangedIndex === undefined) return;
+
+    const lastPossiblyStaleIndex = Math.max(
+      previousMessages.length,
+      messages.length
+    );
+    for (let index = firstChangedIndex; index < lastPossiblyStaleIndex; index += 1) {
+      cacheRef.current.clear(index, 0);
+    }
+    listRef.current?.recomputeRowHeights(firstChangedIndex);
+
+    if (!shouldFollowOutputRef.current || messages.length === 0) return;
+    const frame = requestAnimationFrame(() => {
+      listRef.current?.scrollToRow(messages.length - 1);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [activeConversation?.id, messages]);
 
   const rowRenderer = ({ index, key, parent, style }: ListRowProps) => (
     <CellMeasurer
@@ -45,7 +77,11 @@ export function MessageList() {
   );
 
   const handleScroll = ({ clientHeight, scrollHeight, scrollTop }: OnScrollParams) => {
-    setIsNearBottom(scrollHeight - scrollTop - clientHeight < 96);
+    shouldFollowOutputRef.current = isNearListBottom({
+      clientHeight,
+      scrollHeight,
+      scrollTop
+    });
   };
 
   return (
