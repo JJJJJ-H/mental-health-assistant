@@ -515,4 +515,4 @@ Remaining deployment verification:
 - [x] Configure a real `DEEPSEEK_API_KEY` and verify a streamed DeepSeek response.
 - [x] Connect the Vercel project to a Git repository.
 - [ ] Add Preview environment variables.
-- [ ] Verify the production `/api/chat` SSE flow after the Serverless ESM hotfix.
+- [x] Verify the production `/api/chat` SSE flow after the Serverless ESM hotfix.
