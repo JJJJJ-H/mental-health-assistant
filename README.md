@@ -2,6 +2,14 @@
 
 一个从零实现的心理健康科普 AI 对话项目。它使用 DeepSeek、SSE 流式输出和内置 RAG 知识库，为用户提供可追溯来源的对话式科普信息。
 
+## 在线体验
+
+- Production: `https://<your-vercel-domain>`
+- Health Check: `https://<your-vercel-domain>/api/health`
+- Deployment Guide: [`docs/deployment/vercel-checklist.md`](docs/deployment/vercel-checklist.md)
+
+> 部署完成前，将 `<your-vercel-domain>` 替换为实际 Vercel Production 域名。
+
 > 本项目仅用于心理健康科普和工程实践，不能替代专业诊断、心理咨询或医疗治疗。若存在伤害自己或他人的紧急风险，请立即联系当地急救服务、前往附近医疗机构急诊，或请可信赖的亲友陪伴并协助联系专业机构。
 
 ## 功能
@@ -17,9 +25,29 @@
 - `react-virtualized` 长列表渲染、Vite 分包和引用面板懒加载。
 - Vercel Serverless Functions 部署。
 
+## 架构
+
+```text
+Browser
+  -> Vercel Static Frontend
+  -> /api/chat Vercel Function
+  -> RAG Prompt Builder
+  -> DeepSeek Streaming API
+```
+
+前端只负责展示、SSE 解析和浏览器本地历史；DeepSeek Key、RAG 检索和 Prompt 拼接全部留在服务端。
+
 ## 技术栈
 
 React 18、Vite、TypeScript、Vercel Functions、SSE、ReactMarkdown、highlight.js、react-virtualized、localStorage、Vitest。
+
+## 项目亮点
+
+- 使用 SSE 实现大模型回答流式输出，并支持中途停止生成。
+- 使用构建期 Markdown 知识库索引实现轻量 RAG 和来源引用。
+- 服务端统一处理 Prompt 拼接、危机风险提示和 DeepSeek API Key。
+- 对话历史默认保存在浏览器 `localStorage`，降低敏感数据服务端留存风险。
+- 使用 Vitest、ESLint、TypeScript 和 GitHub Actions 做基础质量门禁。
 
 ## 本地启动
 
