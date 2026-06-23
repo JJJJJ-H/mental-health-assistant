@@ -331,6 +331,16 @@ describe("DeepSeek adapter", () => {
 });
 
 describe("health endpoint", () => {
+  it("reports unconfigured production safely", () => {
+    const result = getHealth({});
+
+    expect(result).toEqual({
+      status: "ok",
+      configured: false,
+      mockAllowed: false
+    });
+  });
+
   it("reports configuration flags without exposing the key", () => {
     const result = getHealth({
       DEEPSEEK_API_KEY: "server-secret",
@@ -343,5 +353,20 @@ describe("health endpoint", () => {
       mockAllowed: true
     });
     expect(JSON.stringify(result)).not.toContain("server-secret");
+  });
+
+  it("does not expose extra environment values", () => {
+    const result = getHealth({
+      DEEPSEEK_API_KEY: "server-secret",
+      ALLOW_MOCK_LLM: "false",
+      INTERNAL_DEPLOY_TOKEN: "private-token"
+    });
+
+    expect(Object.keys(result).sort()).toEqual([
+      "configured",
+      "mockAllowed",
+      "status"
+    ]);
+    expect(JSON.stringify(result)).not.toContain("private-token");
   });
 });
