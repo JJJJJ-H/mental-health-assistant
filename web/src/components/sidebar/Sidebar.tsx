@@ -76,6 +76,14 @@ export function Sidebar() {
         <a className="text-button" href="http://127.0.0.1:8000/admin" target="_blank" rel="noreferrer">
           打开管理后台
         </a>
+        <a
+          className="text-button"
+          href={import.meta.env.VITE_MONITOR_DASHBOARD_URL ?? "http://localhost:5173"}
+          target="_blank"
+          rel="noreferrer"
+        >
+          打开监控看板
+        </a>
       </div>
     </aside>
   );

@@ -19,7 +19,7 @@
 
 | 层 | 技术 |
 |---|---|
-| 前端 | React 18、Vite、TypeScript、ReactMarkdown、react-virtualized |
+| 前端 | React 18、Vite、TypeScript、ReactMarkdown、react-virtualized、PulseBoard SDK |
 | 后端 | FastAPI、LangGraph / LangChain、SQLAlchemy、SSE |
 | 数据 | MySQL、Milvus（向量）、可选 Langfuse |
 | 工具 | 内置 `@tool` + 独立 MCP（物流 `:8101`、售后 `:8102`） |
@@ -30,6 +30,7 @@
 ```
 app/            FastAPI 入口、LangGraph、RAG、工具、静态管理页
 mcp_servers/    物流 / 售后 MCP 进程
+third_party/   PulseBoard 监控（git submodule）
 web/            React 聊天前端（对接 /api/chat SSE）
 sql/            建表与迁移（compose 首启自动执行）
 scripts/        建库、评估、微调等离线脚本
@@ -99,7 +100,50 @@ npm install
 npm run dev
 ```
 
-打开 http://localhost:5173 。开发时 Vite 将 `/api` 代理到 `http://127.0.0.1:8000`。
+打开 http://localhost:5176 。开发时 Vite 将 `/api` 代理到 `http://127.0.0.1:8000`。
+
+首次克隆若含监控 submodule：
+
+```bash
+git submodule update --init --recursive
+```
+
+## 前端监控（PulseBoard）
+
+业务前端接入自研监控 [PulseBoard](https://github.com/JJJJJ-H/frontend-monitoring-system)，SDK 经 submodule `third_party/pulseboard` 引入，`appId` 为 `mewhelp-web`。
+
+### 本地联调
+
+1. 另开终端启动 PulseBoard（API `:3000`，看板 `:5173`）：
+
+```bash
+cd third_party/pulseboard
+corepack pnpm install
+corepack pnpm dev
+# 或 docker compose up --build
+```
+
+2. 看板查看 MewHelp 数据时设置：
+
+```bash
+# 在 pulseboard apps/dashboard 环境
+VITE_APP_ID=mewhelp-web
+```
+
+3. MewHelp web（`:5176`）默认向 `http://localhost:3000/api/events/batch` 上报。可在 `web/.env` 覆盖：
+
+```bash
+VITE_MONITOR_API_URL=http://localhost:3000
+VITE_MONITOR_DASHBOARD_URL=http://localhost:5173
+```
+
+4. 演示：打开客服页发「订单 1001 的物流到哪了」→ 侧栏「打开监控看板」→ 查看请求耗时、`biz:chat_*` 事件与录屏。
+
+聊天输入框带 `monitor-block`，录屏 `maskAllInputs`，避免录到明文提问。
+
+### 生产
+
+构建时注入 `VITE_MONITOR_API_URL` 指向已部署的 PulseBoard Render API；看板 `VITE_APP_ID=mewhelp-web`。
 
 ## 前后端如何对接
 
@@ -150,11 +194,12 @@ cd web && npm run build
 
 | 端口 | 服务 |
 |---|---|
-| 5173 | React 开发服务器 |
+| 5176 | React 客服前端（web） |
+| 5173 | PulseBoard 监控看板（submodule） |
 | 8000 | FastAPI |
 | 8101 / 8102 | 物流 / 售后 MCP |
 | 8110 | 主题分类器（可选） |
-| 3000 | Langfuse（可选） |
+| 3000 | PulseBoard 采集 API（联调）；Langfuse 可选也占 3000，勿同时起冲突 |
 | 19530 | Milvus |
 
 ## 隐私与安全

@@ -79,6 +79,8 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+        "http://localhost:5176",
+        "http://127.0.0.1:5176",
         "https://mental-health-assistant-gamma.vercel.app",
     ],
     allow_origin_regex=r"https://.*\.vercel\.app",

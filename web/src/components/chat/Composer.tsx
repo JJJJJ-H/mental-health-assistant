@@ -25,6 +25,7 @@ export function Composer() {
         <textarea
           id="message"
           name="message"
+          className="monitor-block"
           value={input}
           onChange={(event) => setInput(event.target.value)}
           onKeyDown={handleKeyDown}

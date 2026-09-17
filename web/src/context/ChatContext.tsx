@@ -16,6 +16,7 @@ import {
   streamChat,
   streamResume
 } from "../services/chatApi";
+import { trackBiz } from "../monitor";
 import { loadPrefs, PREFS_VERSION, savePrefs } from "../services/storage";
 import type {
   ChatMessage,
@@ -229,9 +230,20 @@ export function ChatProvider({ children }: PropsWithChildren) {
         scheduleFlush: () => void;
         flush: () => void;
         setTerminal: () => void;
+        startedAt: number;
+        ttfbSent: { value: boolean };
+        hasTools: { value: boolean };
       }
     ) => {
+      if (
+        !ctx.ttfbSent.value &&
+        (onEvent.event === "tool" || onEvent.event === "delta")
+      ) {
+        ctx.ttfbSent.value = true;
+        trackBiz("biz:chat_ttfb", { ms: Date.now() - ctx.startedAt });
+      }
       if (onEvent.event === "tool") {
+        ctx.hasTools.value = true;
         updateAssistant(conversationId, assistantId, (message) => ({
           ...message,
           tools: [...(message.tools ?? []), { name: onEvent.name }]
@@ -255,6 +267,7 @@ export function ChatProvider({ children }: PropsWithChildren) {
         if (onEvent.data.conversation_id) {
           bindServerId(conversationId, onEvent.data.conversation_id);
         }
+        trackBiz("biz:interrupt", { kind: onEvent.data.kind });
         updateAssistant(conversationId, assistantId, (message) => ({
           ...message,
           interrupt: onEvent.data,
@@ -264,6 +277,10 @@ export function ChatProvider({ children }: PropsWithChildren) {
         ctx.flush();
         ctx.setTerminal();
         bindServerId(conversationId, onEvent.conversation_id);
+        trackBiz("biz:chat_done", {
+          conversationId: onEvent.conversation_id,
+          hasTools: ctx.hasTools.value
+        });
         updateAssistant(conversationId, assistantId, (message) => ({
           ...message,
           status: "complete"
@@ -271,6 +288,7 @@ export function ChatProvider({ children }: PropsWithChildren) {
       } else if (onEvent.event === "error") {
         ctx.flush();
         ctx.setTerminal();
+        trackBiz("biz:chat_error", { message: onEvent.message });
         updateAssistant(conversationId, assistantId, (message) => ({
           ...message,
           content: message.content || onEvent.message,
@@ -293,6 +311,10 @@ export function ChatProvider({ children }: PropsWithChildren) {
       let terminalReceived = false;
       const bufferedDelta = { value: "" };
       let renderTimer: ReturnType<typeof setTimeout> | undefined;
+      const startedAt = Date.now();
+      const ttfbSent = { value: false };
+      const hasTools = { value: false };
+      trackBiz("biz:chat_start", { conversationId });
 
       const flush = () => {
         if (!bufferedDelta.value) return;
@@ -320,11 +342,17 @@ export function ChatProvider({ children }: PropsWithChildren) {
             flush,
             setTerminal: () => {
               terminalReceived = true;
-            }
+            },
+            startedAt,
+            ttfbSent,
+            hasTools
           });
         });
-      } catch {
+      } catch (error) {
         if (!controller.signal.aborted) {
+          trackBiz("biz:chat_error", {
+            message: error instanceof Error ? error.message : "stream failed"
+          });
           updateAssistant(conversationId, assistantMessage.id, (message) => ({
             ...message,
             content: message.content || "暂时无法获得回答，请稍后重试。",
